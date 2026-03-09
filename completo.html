@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Catálogo 3D Pro - FNR</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-panel: rgba(15, 23, 42, 0.95);
+            --accent: #3b82f6;
+            --text: #f8fafc;
+            --input-bg: #1e293b;
+        }
+
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+
+        /* Painel Lateral Estilo Screenshot */
+        #sidebar {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            width: 320px; max-height: 90vh;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text); padding: 24px;
+            display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 1.2rem; font-weight: 600; }
+
+        input, select {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155;
+            background: var(--input-bg); color: white; box-sizing: border-box;
+        }
+
+        /* Seletor de Cores */
+        .color-picker { display: flex; gap: 8px; margin: 10px 0; }
+        .color-dot {
+            width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+            transition: transform 0.2s; border: 2px solid transparent;
+        }
+        .color-dot:hover { transform: scale(1.2); }
+        .color-dot.active { border-color: white; }
+
+        /* Botões */
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            font-weight: bold; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; gap: 10px; transition: filter 0.2s;
+            color: white; background: var(--accent);
+        }
+        .btn:hover { filter: brightness(1.2); }
+        .btn-delete { background: #ef4444; }
+
+        /* Lista de Itens */
+        #itemList { margin-top: 15px; font-size: 0.9rem; border-top: 1px solid #334155; padding-top: 15px; }
+        .item-row { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; margin-bottom: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>Catálogo 3D</h2>
+        <input type="text" id="nodeName" placeholder="Nome do Produto">
+        <input type="text" id="nodeCategory" placeholder="Categoria (ex: Eletrônico)">
+        
+        <div class="color-picker">
+            <div class="color-dot active" style="background: #ef4444" onclick="selectColor('#ef4444', this)"></div>
+            <div class="color-dot" style="background: #3b82f6" onclick="selectColor('#3b82f6', this)"></div>
+            <div class="color-dot" style="background: #22c55e" onclick="selectColor('#22c55e', this)"></div>
+            <div class="color-dot" style="background: #eab308" onclick="selectColor('#eab308', this)"></div>
+            <div class="color-dot" style="background: #a855f7" onclick="selectColor('#a855f7', this)"></div>
+            <div class="color-dot" style="background: #f97316" onclick="selectColor('#f97316', this)"></div>
+        </div>
+
+        <button class="btn" onclick="handleCreate()"><i class="fas fa-plus"></i> Criar</button>
+        <button class="btn" onclick="renderScene()"><i class="fas fa-list"></i> Listar</button>
+        <button class="btn" onclick="handleUpdate()"><i class="fas fa-sync"></i> Atualizar</button>
+        <button class="btn btn-delete" onclick="handleDelete()"><i class="fas fa-trash"></i> Remover</button>
+
+        <div id="itemList">
+            <strong>Lista de Itens</strong>
+            <div id="itemsContainer"></div>
+        </div>
+    </div>
+
+    <a-scene background="color: #0f172a">
+        <a-grid position="0 0 0" rotation="-90 0 0" width="100" height="100" static-body material="opacity: 0.2; color: #3b82f6"></a-grid>
+        
+        <a-entity id="mainContainer" position="0 0 -5"></a-entity>
+
+        <a-camera>
+            <a-cursor color="#3b82f6"></a-cursor>
+        </a-camera>
+
+        <a-light type="ambient" color="#445451"></a-light>
+        <a-light type="point" intensity="2" position="2 4 4"></a-light>
+    </a-scene>
+
+    <script>
+        let selectedColor = '#ef4444';
+        let currentSelectedId = null;
+        const DB_KEY = 'catalogo_vr_fnr';
+
+        function selectColor(color, el) {
+            selectedColor = color;
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function getItems() { return JSON.parse(localStorage.getItem(DB_KEY)) || []; }
+
+        function saveItems(items) {
+            localStorage.setItem(DB_KEY, JSON.stringify(items));
+            renderScene();
+        }
+
+        function handleCreate() {
+            const name = document.getElementById('nodeName').value || 'Item';
+            const cat = document.getElementById('nodeCategory').value || 'Geral';
+            const items = getItems();
+            const newItem = {
+                id: Date.now(),
+                name: name,
+                category: cat,
+                color: selectedColor,
+                pos: { x: (Math.random() - 0.5) * 6, y: 0.5, z: (Math.random() - 0.5) * 3 }
+            };
+            items.push(newItem);
+            saveItems(items);
+        }
+
+        function handleDelete() {
+            if(!currentSelectedId) return alert("Selecione um item no 3D primeiro!");
+            const items = getItems().filter(i => i.id !== currentSelectedId);
+            currentSelectedId = null;
+            saveItems(items);
+        }
+
+        function handleUpdate() {
+            if(!currentSelectedId) return alert("Selecione um item no 3D primeiro!");
+            const items = getItems().map(i => {
+                if(i.id === currentSelectedId) {
+                    i.name = document.getElementById('nodeName').value;
+                    i.category = document.getElementById('nodeCategory').value;
+                    i.color = selectedColor;
+                }
+                return i;
+            });
+            saveItems(items);
+        }
+
+        function renderScene() {
+            const container = document.querySelector('#mainContainer');
+            const listContainer = document.querySelector('#itemsContainer');
+            container.innerHTML = '';
+            listContainer.innerHTML = '';
+            
+            const items = getItems();
+            items.forEach(item => {
+                // Renderização 3D
+                const box = document.createElement('a-box');
+                box.setAttribute('position', item.pos);
+                box.setAttribute('color', item.color);
+                box.setAttribute('scale', '0.8 0.8 0.8');
+                
+                const text = document.createElement('a-text');
+                text.setAttribute('value', item.name);
+                text.setAttribute('position', '0 1 0');
+                text.setAttribute('align', 'center');
+                text.setAttribute('width', '4');
+                box.appendChild(text);
+
+                box.addEventListener('click', () => {
+                    currentSelectedId = item.id;
+                    document.getElementById('nodeName').value = item.name;
+                    document.getElementById('nodeCategory').value = item.category;
+                    // Feedback visual de seleção
+                    box.setAttribute('animation', 'property: scale; to: 1.1 1.1 1.1; dur: 200');
+                });
+
+                container.appendChild(box);
+
+                // Renderização na Lista UI
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                row.innerHTML = `• ${item.name} (${item.category})`;
+                listContainer.appendChild(row);
+            });
+        }
+
+        window.onload = renderScene;
+    </script>
+</body>
+</html>
