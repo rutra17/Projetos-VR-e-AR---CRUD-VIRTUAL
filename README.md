@@ -29,7 +29,7 @@ A aplicação foi estruturada respeitando conceitualmente os verbos de uma API R
 ## 📦 Como Executar
 1.  Acesse o repositório pelo **GitHub Codespaces** ou clone localmente.
 2.  Abra o arquivo `index.html` em um navegador moderno.
-3.  Com o Liive Server ativo, clique em Go Live
+3.  Com o Live Server ativo, clique em Go Live
 4.  Para interagir:
     * **Mouse:** Clique nos botões do menu ou nos objetos.
     * **VR Gaze:** Caso use óculos VR, mantenha o cursor (mira) sobre os botões por 1.2s para ativar o clique (Fuse).
